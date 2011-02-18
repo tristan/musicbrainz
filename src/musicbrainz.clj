@@ -11,8 +11,7 @@
     (clojure.xml/parse is)))
 
 (defn xml2map [xml]
-;  (println xml)
-  (if (string? xml)
+  (if (or (nil? xml) (string? xml))
     xml
     (cond (or (= (xml :tag) :metadata))
 	  (recur (first (xml :content)))
@@ -47,23 +46,19 @@
   (let [url (str base-url (name resource) "/?type=xml&" (s/join "&" (for [[k v] params] (str (name k) "=" (s/replace-str " " "+" v)))))
 	r (get-xml url)
 	m (xml2map r)]
-    m))
+    (or m {})))
 
 (defn id3-to-map [id3]
   {:artist (.getArtist id3)
    :album (.getAlbum id3)
    :title (.getTitle id3)})
 
-(defn list-files [^java.io.File root]
-  (apply concat
-	 (filter #(.isFile %) (.listFiles root))
-	 (map list-files (filter #(.isDirectory %) (.listFiles root)))))
-
 (defn mp3scan [directory]
   (remove nil?
 	  (map
 	   (fn [f]
-	     (if (.isFile f)
+	     (if (and (.isFile f)
+		      (< (.length f) (* 1048576 100))) ; assuming no mp3s are over 100mbs (which avoids oom exceptions)
 	       (try
 		(let [f (.getCanonicalPath f)
 		      m (com.mpatric.mp3agic.Mp3File. f)]
@@ -80,7 +75,22 @@
 		    nil
 		    (throw e))))
 	       nil))
-;	   (file-seq (java.io.File. directory)))))
-	   (let [fl ;(list-files (java.io.File. directory))]
-		 (file-seq (java.io.File. directory))]
-	     fl))))
+	   (file-seq (java.io.File. directory)))))
+
+(defn date-keyfn [i]
+  (get (first (sort-by :date (i :release-event-list))) :date ""))
+
+(defn run [dir]
+  (sort-by
+   date-keyfn
+   (apply
+    concat
+    (map (fn [artist]
+	   (filter #(= (% :ext:score) "100")
+		   ((search :release {:artist artist}) :release-list)))
+	 (set (map :artist (mp3scan dir)))))))
+
+(defn report [dir]
+  (doseq [r (run dir)]
+    (println (r :name) "-" (r :title) (str "(" (r :type) ")")))
+  )
