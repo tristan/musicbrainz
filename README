@@ -1,6 +1,19 @@
 # musicbrainz
 
-FIXME: write description
+A simple tool that recursively scans a directory for mp3s, gets an artist list
+from the id3 tags then uses musicbrainz to build a list of all the releases of
+all the artists in order of release date.
+
+Written in clojure.
+
+TODO: 
+ * make a proper library.
+ * support pulling in all results automatically (musicbrainz returns a default
+   of 25 results, and an offset option needs to be used with subsequent calls
+   to get all the results
+ * needs much faster mp3 scanning.
+ * Perhaps some caching of previous results/scanned files.
+ * storing of results in a database to allow customisable reports.
 
 ## Usage
 
@@ -8,7 +21,20 @@ FIXME: write
 
 ## Installation
 
-FIXME: write
+git clone http://github.com/tristan/musicbrainz.git
+cd musicbrainz
+lein deps
+cd ..
+git clone http://github.com/mpatric/mp3agic.git
+cd mp3agic
+ant build
+cp build/mp3agic.jar ../musicbrainz/lib
+cd ../musicbrainz
+lein repl
+(require 'musicbrainz)
+(musicbranz/report "PATH/TO/MP3S")
+
+open report.html
 
 ## License
 
